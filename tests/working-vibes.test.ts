@@ -1,40 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const FAUX_PROVIDER_PATH = "/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/providers/faux.js";
+const FAUX_PROVIDER_PATH = pathToFileURL(join(
+  process.cwd(),
+  "node_modules",
+  "@mariozechner",
+  "pi-ai",
+  "dist",
+  "providers",
+  "faux.js",
+)).href;
 
 function ensurePiModuleLinks(): { cleanup: () => void } {
-  const nodeModulesDir = join(process.cwd(), "node_modules", "@mariozechner");
-  mkdirSync(nodeModulesDir, { recursive: true });
-  const links = [
-    {
-      link: join(nodeModulesDir, "pi-coding-agent"),
-      target: "/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent",
-    },
-    {
-      link: join(nodeModulesDir, "pi-ai"),
-      target: "/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai",
-    },
-  ];
-
-  for (const { link, target } of links) {
-    if (!existsSync(link)) {
-      symlinkSync(target, link);
-    }
-  }
-
-  return {
-    cleanup() {
-      for (const { link } of links.reverse()) {
-        if (existsSync(link)) {
-          rmSync(link, { recursive: true, force: true });
-        }
-      }
-    },
-  };
+  return { cleanup() {} };
 }
 
 test("generateVibesBatch includes a system prompt so faux providers can return text", async () => {

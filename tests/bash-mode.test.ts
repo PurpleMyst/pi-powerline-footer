@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { appendProjectHistory, matchHistoryEntries, readGlobalShellHistory } from "../bash-mode/history.ts";
 import { BashTranscriptStore } from "../bash-mode/transcript.ts";
 import {
@@ -23,35 +24,25 @@ function getMethod(target: object, name: string): Function {
   return method;
 }
 
+const zshIntegrationTest = existsSync("/bin/zsh") ? test : test.skip;
+const bashIntegrationTest = existsSync("/bin/bash") ? test : test.skip;
+
+async function importCustomEditor(): Promise<any> {
+  return import(pathToFileURL(join(
+    process.cwd(),
+    "node_modules",
+    "@mariozechner",
+    "pi-coding-agent",
+    "dist",
+    "modes",
+    "interactive",
+    "components",
+    "custom-editor.js",
+  )).href);
+}
+
 function ensureEditorModuleLinks(): { cleanup: () => void } {
-  const nodeModulesDir = join(process.cwd(), "node_modules", "@mariozechner");
-  mkdirSync(nodeModulesDir, { recursive: true });
-  const links = [
-    {
-      link: join(nodeModulesDir, "pi-coding-agent"),
-      target: "/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent",
-    },
-    {
-      link: join(nodeModulesDir, "pi-tui"),
-      target: "/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui",
-    },
-  ];
-
-  for (const { link, target } of links) {
-    if (!existsSync(link)) {
-      symlinkSync(target, link);
-    }
-  }
-
-  return {
-    cleanup() {
-      for (const { link } of links.reverse()) {
-        if (existsSync(link)) {
-          rmSync(link, { recursive: true, force: true });
-        }
-      }
-    },
-  };
+  return { cleanup() {} };
 }
 
 test("project history is stored newest-first and global zsh history parses histfile format", () => {
@@ -482,7 +473,7 @@ test("global history breaks ties among already-valid native ghost candidates", a
   assert.equal(suggestion?.source, "native");
 });
 
-test("zsh shell native completion keeps directory suffixes for escaped paths", async () => {
+zshIntegrationTest("zsh shell native completion keeps directory suffixes for escaped paths", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "powerline-zsh-native-path-"));
   const histfile = join(cwd, ".zsh_history");
   process.env.HISTFILE = histfile;
@@ -501,7 +492,7 @@ test("zsh shell native completion keeps directory suffixes for escaped paths", a
   assert.equal(suggestion?.source, "native");
 });
 
-test("bash shell native completion does not override path completion in argument position", async () => {
+bashIntegrationTest("bash shell native completion does not override path completion in argument position", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "powerline-bash-native-path-"));
   mkdirSync(join(cwd, "devdir"), { recursive: true });
 
@@ -517,7 +508,7 @@ test("bash shell native completion does not override path completion in argument
   assert.equal(suggestion?.source, "native");
 });
 
-test("managed shell session preserves cwd changes across commands", async () => {
+zshIntegrationTest("managed shell session preserves cwd changes across commands", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "powerline-shell-"));
   const childDir = join(cwd, "child");
   mkdirSync(childDir, { recursive: true });
@@ -549,7 +540,7 @@ test("managed shell session preserves cwd changes across commands", async () => 
   }
 });
 
-test("managed shell session recovers cleanly after interrupt", async () => {
+zshIntegrationTest("managed shell session recovers cleanly after interrupt", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "powerline-shell-interrupt-"));
   const store = new BashTranscriptStore({ transcriptMaxLines: 100, transcriptMaxBytes: 64 * 1024 });
   const session = new ManagedShellSession("/bin/zsh", cwd, store, () => {}, () => {});
@@ -626,7 +617,7 @@ test("bash editor does not submit pasted multiline input while bracketed paste i
 
   try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
-    const { CustomEditor } = await import("/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/custom-editor.js");
+    const { CustomEditor } = await importCustomEditor();
 
     let delegated = 0;
     let submitted = 0;
@@ -674,7 +665,7 @@ test("bash editor refreshes shell ghost state after a bracketed paste completes"
 
   try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
-    const { CustomEditor } = await import("/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/custom-editor.js");
+    const { CustomEditor } = await importCustomEditor();
 
     let delegated = 0;
     let scheduled = 0;
@@ -1084,7 +1075,7 @@ test("one-off bang submit does not accept ghost text before submitting", async (
 
   try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
-    const { CustomEditor } = await import("/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/dist/modes/interactive/components/custom-editor.js");
+    const { CustomEditor } = await importCustomEditor();
 
     let delegated = 0;
     const superHandleInput = CustomEditor.prototype.handleInput;
