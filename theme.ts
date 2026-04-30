@@ -2,13 +2,15 @@
  * Theme system for powerline-footer
  * 
  * Colors are resolved in order:
- * 1. User overrides from theme.json (if exists)
- * 2. Preset colors
- * 3. Default colors
+ * 1. User overrides from pi-extension-settings (if configured)
+ * 2. User overrides from theme.json (backwards compatibility)
+ * 3. Preset colors
+ * 4. Default colors
  */
 
 import type { Theme, ThemeColor } from "@mariozechner/pi-coding-agent";
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ColorScheme, ColorValue, SemanticColor, ThemeLike } from "./types.ts";
@@ -89,12 +91,44 @@ function getThemePath(): string {
   return join(extDir, "theme.json");
 }
 
+function getExtensionSettingsPath(): string {
+  return join(process.env.HOME || process.env.USERPROFILE || homedir(), ".pi", "agent", "settings-extensions.json");
+}
+
+function loadExtensionThemeConfig(): PowerlineThemeConfig {
+  const settingsPath = getExtensionSettingsPath();
+  try {
+    if (!existsSync(settingsPath)) {
+      return {};
+    }
+
+    const parsed = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    const extensionSettings = isRecord(parsed) ? parsed["pi-powerline-footer"] : undefined;
+    if (!isRecord(extensionSettings) || typeof extensionSettings.theme !== "string" || !extensionSettings.theme.trim()) {
+      return {};
+    }
+
+    const themeConfig = JSON.parse(extensionSettings.theme);
+    return isRecord(themeConfig) ? themeConfig : {};
+  } catch (error) {
+    console.debug(`[powerline-theme] Failed to load pi-extension-settings theme from ${settingsPath}:`, error);
+    return {};
+  }
+}
+
 /**
- * Load user theme config from theme.json
+ * Load user theme config from pi-extension-settings, falling back to theme.json.
  */
 export function loadThemeConfig(): PowerlineThemeConfig {
   const now = Date.now();
   if (themeConfigCache && now - themeConfigCacheTime < CACHE_TTL) {
+    return themeConfigCache;
+  }
+
+  const extensionThemeConfig = loadExtensionThemeConfig();
+  if (Object.keys(extensionThemeConfig).length > 0) {
+    themeConfigCache = extensionThemeConfig;
+    themeConfigCacheTime = now;
     return themeConfigCache;
   }
 

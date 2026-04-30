@@ -60,6 +60,8 @@ let config: PowerlineConfig = {
   customItems: [],
 };
 
+const EXTENSION_SETTINGS_NAME = "pi-powerline-footer";
+
 const CUSTOM_COMPACTION_STATUS_KEY = "compact-policy";
 let customCompactionEnabled = false;
 
@@ -463,8 +465,60 @@ function persistStashHistory(history: string[]): void {
   }
 }
 
+function getExtensionSettingsPath(): string {
+  return join(process.env.HOME || process.env.USERPROFILE || homedir(), ".pi", "agent", "settings-extensions.json");
+}
+
+function readExtensionSettings(): Record<string, unknown> {
+  const settingsPath = getExtensionSettingsPath();
+  try {
+    if (!existsSync(settingsPath)) {
+      return {};
+    }
+
+    const parsed = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    const extensionSettings = isRecord(parsed) ? parsed[EXTENSION_SETTINGS_NAME] : undefined;
+    return isRecord(extensionSettings) ? extensionSettings : {};
+  } catch (error) {
+    console.debug(`[powerline-footer] Failed to read pi-extension-settings from ${settingsPath}:`, error);
+    return {};
+  }
+}
+
+function parseJsonSetting(value: unknown): Record<string, unknown> {
+  if (typeof value !== "string" || !value.trim()) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : {};
+  } catch (error) {
+    console.debug("[powerline-footer] Ignoring invalid pi-extension-settings JSON setting:", error);
+    return {};
+  }
+}
+
+function applyExtensionSettings(settings: Record<string, unknown>): Record<string, unknown> {
+  const extensionSettings = readExtensionSettings();
+  let merged = mergeSettings(settings, parseJsonSetting(extensionSettings.settings));
+
+  const powerlineConfig = parseJsonSetting(extensionSettings.powerline);
+  if (Object.keys(powerlineConfig).length > 0) {
+    merged = { ...merged, powerline: powerlineConfig };
+  }
+
+  const preset = normalizePreset(extensionSettings.preset);
+  if (preset) {
+    merged = { ...merged, powerline: nextPowerlineSettingWithPreset(merged.powerline, preset) };
+  }
+
+  return merged;
+}
+
 function readSettings(cwd: string = process.cwd()): Record<string, unknown> {
-  return mergeSettings(readSettingsFile(getSettingsPath()), readSettingsFile(getProjectSettingsPath(cwd)));
+  const legacySettings = mergeSettings(readSettingsFile(getSettingsPath()), readSettingsFile(getProjectSettingsPath(cwd)));
+  return applyExtensionSettings(legacySettings);
 }
 
 function writePowerlinePresetSetting(preset: StatusLinePreset, cwd: string = process.cwd()): boolean {
@@ -766,6 +820,37 @@ function computeResponsiveLayout(
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function powerlineFooter(pi: ExtensionAPI) {
+  pi.events.emit("pi-extension-settings:register", {
+    name: EXTENSION_SETTINGS_NAME,
+    settings: [
+      {
+        id: "preset",
+        label: "Powerline preset",
+        description: "Status line preset. Overrides legacy settings.json when set.",
+        defaultValue: "",
+        values: ["", ...PRESET_NAMES],
+      },
+      {
+        id: "powerline",
+        label: "Powerline config JSON",
+        description: "JSON object for advanced powerline config, including customItems.",
+        defaultValue: "",
+      },
+      {
+        id: "settings",
+        label: "Advanced settings JSON",
+        description: "JSON object merged over legacy settings.json for this extension.",
+        defaultValue: "",
+      },
+      {
+        id: "theme",
+        label: "Theme JSON",
+        description: "JSON theme override with colors and icons. Replaces theme.json when set.",
+        defaultValue: "",
+      },
+    ],
+  });
+
   const startupSettings = readSettings();
   config = parsePowerlineConfig(startupSettings.powerline, PRESET_NAMES);
   const resolvedShortcuts = resolveShortcutConfig(startupSettings);

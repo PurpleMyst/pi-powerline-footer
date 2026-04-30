@@ -55,7 +55,7 @@ Activates automatically. Toggle with `/powerline`, switch presets with `/powerli
 
 **Environment:** `POWERLINE_NERD_FONTS=1` to force Nerd Fonts, `=0` for ASCII.
 
-Preset selection is saved to `~/.pi/agent/settings.json` under `powerline` and restored on startup.
+Preset selection is saved to `~/.pi/agent/settings.json` under `powerline` and restored on startup. If `@juanibiapina/pi-extension-settings` is installed, `/extension-settings` can manage the `pi-powerline-footer` preset, advanced `powerline` JSON, and theme JSON; those values override legacy `settings.json`/`theme.json` values when set.
 Run `/powerline default` to switch back to the default preset.
 
 ### Custom items from extension statuses
@@ -290,7 +290,7 @@ Configure via preset options: `path: { mode: "full" }`
 
 ## Theming
 
-Colors are configurable via pi's theme system. Each preset defines its own color scheme, and you can override individual colors and icons with a `theme.json` file in the extension directory.
+Colors are configurable via pi's theme system. Each preset defines its own color scheme, and you can override individual colors and icons through `@juanibiapina/pi-extension-settings` or the legacy `theme.json` file in the extension directory.
 
 ### Default Colors
 
@@ -313,7 +313,7 @@ Colors are configurable via pi's theme system. Each preset defines its own color
 
 ### Custom Theme Override
 
-Create `~/.pi/agent/extensions/powerline-footer/theme.json`:
+Preferred: install `@juanibiapina/pi-extension-settings`, open `/extension-settings`, select `pi-powerline-footer` → `Theme JSON`, and paste a JSON object:
 
 ```json
 {
@@ -334,6 +334,8 @@ Create `~/.pi/agent/extensions/powerline-footer/theme.json`:
   }
 }
 ```
+
+Backwards compatible fallback: put the same JSON in `~/.pi/agent/extensions/powerline-footer/theme.json`.
 
 Colors can be:
 - **Theme color names**: `accent`, `muted`, `dim`, `text`, `success`, `warning`, `error`, `border`, `borderAccent`, `borderMuted`
