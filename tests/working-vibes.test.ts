@@ -15,12 +15,8 @@ const FAUX_PROVIDER_PATH = pathToFileURL(join(
   "faux.js",
 )).href;
 
-function ensurePiModuleLinks(): { cleanup: () => void } {
-  return { cleanup() {} };
-}
 
 test("generateVibesBatch includes a system prompt so faux providers can return text", async () => {
-  const links = ensurePiModuleLinks();
   const home = mkdtempSync(join(tmpdir(), "powerline-vibes-home-"));
   const previousHome = process.env.HOME;
   process.env.HOME = home;
@@ -77,12 +73,10 @@ test("generateVibesBatch includes a system prompt so faux providers can return t
       process.env.HOME = previousHome;
     }
     rmSync(home, { recursive: true, force: true });
-    links.cleanup();
   }
 });
 
 test("on-demand vibe generation includes a system prompt for providers that require instructions", async () => {
-  const links = ensurePiModuleLinks();
   const home = mkdtempSync(join(tmpdir(), "powerline-vibes-home-"));
   const previousHome = process.env.HOME;
   process.env.HOME = home;
@@ -144,12 +138,10 @@ test("on-demand vibe generation includes a system prompt for providers that requ
       process.env.HOME = previousHome;
     }
     rmSync(home, { recursive: true, force: true });
-    links.cleanup();
   }
 });
 
 test("generateVibesBatch preserves provider errors instead of reporting an empty response", async () => {
-  const links = ensurePiModuleLinks();
   const home = mkdtempSync(join(tmpdir(), "powerline-vibes-home-"));
   const previousHome = process.env.HOME;
   process.env.HOME = home;
@@ -201,6 +193,5 @@ test("generateVibesBatch preserves provider errors instead of reporting an empty
       process.env.HOME = previousHome;
     }
     rmSync(home, { recursive: true, force: true });
-    links.cleanup();
   }
 });

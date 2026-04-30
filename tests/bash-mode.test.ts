@@ -41,9 +41,6 @@ async function importCustomEditor(): Promise<any> {
   )).href);
 }
 
-function ensureEditorModuleLinks(): { cleanup: () => void } {
-  return { cleanup() {} };
-}
 
 test("project history is stored newest-first and global zsh history parses histfile format", () => {
   const cwd = mkdtempSync(join(tmpdir(), "powerline-history-"));
@@ -577,9 +574,6 @@ zshIntegrationTest("managed shell session recovers cleanly after interrupt", asy
 });
 
 test("bash editor Tab accepts the current ghost suggestion without opening autocomplete", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let accepted = false;
 
@@ -607,15 +601,9 @@ test("bash editor Tab accepts the current ghost suggestion without opening autoc
     }, "tab");
 
     assert.equal(accepted, true);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor does not submit pasted multiline input while bracketed paste is active", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     const { CustomEditor } = await importCustomEditor();
 
@@ -655,15 +643,9 @@ test("bash editor does not submit pasted multiline input while bracketed paste i
 
     assert.equal(submitted, 0);
     assert.equal(delegated, 1);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor refreshes shell ghost state after a bracketed paste completes", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     const { CustomEditor } = await importCustomEditor();
 
@@ -714,9 +696,6 @@ test("bash editor refreshes shell ghost state after a bracketed paste completes"
 
     assert.equal(delegated, 1);
     assert.equal(scheduled, 1);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("one-off bash autocomplete provider stays inactive even inside bang commands", async () => {
@@ -780,9 +759,6 @@ test("one-off bash autocomplete provider stays inactive before the bang command 
 });
 
 test("bash editor refreshGhostSuggestion reuses the ghost scheduling path", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let scheduled = false;
 
@@ -793,15 +769,9 @@ test("bash editor refreshGhostSuggestion reuses the ghost scheduling path", asyn
     });
 
     assert.equal(scheduled, true);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor dismiss clears autocomplete when mode turns off", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let aborted = false;
     let cancelled = false;
@@ -836,15 +806,9 @@ test("bash editor dismiss clears autocomplete when mode turns off", async () => 
     assert.equal(rendered, true);
     assert.equal(fakeEditor.historyIndex, 7);
     assert.equal(fakeEditor.shellHistoryIndex, -1);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor shell history state does not clobber the base prompt history index", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     const fakeEditor = {
       historyIndex: 5,
@@ -869,15 +833,9 @@ test("bash editor shell history state does not clobber the base prompt history i
 
     assert.equal(fakeEditor.historyIndex, 5);
     assert.equal(fakeEditor.shellHistoryIndex, 0);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor escape exits bash mode", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let exited = false;
     let interrupted = false;
@@ -902,15 +860,9 @@ test("bash editor escape exits bash mode", async () => {
 
     assert.equal(exited, true);
     assert.equal(interrupted, false);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor right arrow accepts an empty-prompt ghost suggestion without submitting", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let accepted = false;
     let submitted = false;
@@ -942,15 +894,9 @@ test("bash editor right arrow accepts an empty-prompt ghost suggestion without s
 
     assert.equal(accepted, true);
     assert.equal(submitted, false);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor right arrow accepts ghost text for one-off bang commands", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let accepted = false;
 
@@ -976,15 +922,9 @@ test("bash editor right arrow accepts ghost text for one-off bang commands", asy
     }, "right");
 
     assert.equal(accepted, true);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor enter does not accept ghost text while a shell command is running", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let warned = false;
     let submitted = false;
@@ -1021,15 +961,9 @@ test("bash editor enter does not accept ghost text while a shell command is runn
 
     assert.equal(warned, true);
     assert.equal(submitted, false);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor enter submits the typed command without accepting ghost text", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let submittedCommand = "";
 
@@ -1065,15 +999,9 @@ test("bash editor enter submits the typed command without accepting ghost text",
     }, "enter");
 
     assert.equal(submittedCommand, "git diff");
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("one-off bang submit does not accept ghost text before submitting", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     const { CustomEditor } = await importCustomEditor();
 
@@ -1112,15 +1040,9 @@ test("one-off bang submit does not accept ghost text before submitting", async (
     }
 
     assert.equal(delegated, 1);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor does not accept a hidden ghost suggestion when the cursor is not at the end", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     const accepted = getMethod(BashModeEditor.prototype, "acceptGhostSuggestion").call({
       ghost: { value: "git status", source: "project-history" },
@@ -1137,15 +1059,9 @@ test("bash editor does not accept a hidden ghost suggestion when the cursor is n
     });
 
     assert.equal(accepted, false);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor submit clears the prompt and refreshes the empty ghost suggestion", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
     let submitted = false;
     let cleared = false;
@@ -1191,7 +1107,4 @@ test("bash editor submit clears the prompt and refreshes the empty ghost suggest
     assert.equal(submitted, true);
     assert.equal(cleared, true);
     assert.equal(refreshed, true);
-  } finally {
-    links.cleanup();
-  }
 });
