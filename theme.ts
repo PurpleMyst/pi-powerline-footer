@@ -52,6 +52,11 @@ let userThemeCacheTime = 0;
 let themeConfigCache: PowerlineThemeConfig | null = null;
 let themeConfigCacheTime = 0;
 const CACHE_TTL = 5000; // 5 seconds
+
+export function clearThemeConfigCache(): void {
+  themeConfigCache = null;
+  themeConfigCacheTime = 0;
+}
 const warnedInvalidThemeColors = new Set<string>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -126,28 +131,21 @@ export function loadThemeConfig(): PowerlineThemeConfig {
   }
 
   const extensionThemeConfig = loadExtensionThemeConfig();
-  if (Object.keys(extensionThemeConfig).length > 0) {
-    themeConfigCache = extensionThemeConfig;
-    themeConfigCacheTime = now;
-    return themeConfigCache;
-  }
 
   const themePath = getThemePath();
+  let fileThemeConfig: PowerlineThemeConfig = {};
   try {
     if (existsSync(themePath)) {
       const content = readFileSync(themePath, "utf-8");
       const parsed = JSON.parse(content);
-      themeConfigCache = isRecord(parsed) ? parsed : {};
-      themeConfigCacheTime = now;
-      return themeConfigCache;
+      fileThemeConfig = isRecord(parsed) ? parsed : {};
     }
   } catch (error) {
-    // Theme overrides are optional. If the file is unreadable or malformed,
-    // keep rendering with built-in defaults instead of breaking the footer.
     console.debug(`[powerline-theme] Failed to load ${themePath}:`, error);
   }
 
-  themeConfigCache = {};
+  // Extension settings provide a global baseline; per-project theme.json overrides it.
+  themeConfigCache = { ...extensionThemeConfig, ...fileThemeConfig };
   themeConfigCacheTime = now;
   return themeConfigCache;
 }

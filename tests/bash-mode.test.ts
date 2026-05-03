@@ -14,6 +14,7 @@ import {
   OneOffBashAutocompleteProvider,
 } from "../bash-mode/completion.ts";
 import { getIcons } from "../icons.ts";
+import { clearThemeConfigCache } from "../theme.ts";
 import { ManagedShellSession } from "../bash-mode/shell-session.ts";
 
 function getMethod(target: object, name: string): Function {
@@ -81,6 +82,7 @@ test("theme.json can override icons without touching colors", () => {
   try {
     writeFileSync(themePath, JSON.stringify({ icons: { auto: "↯", warning: "" } }, null, 2) + "\n");
     process.env.POWERLINE_NERD_FONTS = "0";
+    clearThemeConfigCache();
 
     const icons = getIcons();
     assert.equal(icons.auto, "↯");
@@ -856,12 +858,24 @@ test("bash editor right arrow accepts ghost text for one-off bang commands", asy
 });
 
 test("bash editor runs copied Pi app action handlers for alt-enter", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
-    const { KeybindingsManager } = await import("/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/keybindings.js");
-    const { setKittyProtocolActive } = await import("/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-tui/dist/keys.js");
+    const { KeybindingsManager } = await import(pathToFileURL(join(
+      process.cwd(),
+      "node_modules",
+      "@mariozechner",
+      "pi-coding-agent",
+      "dist",
+      "core",
+      "keybindings.js",
+    )).href);
+    const { setKittyProtocolActive } = await import(pathToFileURL(join(
+      process.cwd(),
+      "node_modules",
+      "@mariozechner",
+      "pi-tui",
+      "dist",
+      "keys.js",
+    )).href);
     const keybindings = KeybindingsManager.create();
     const editor = new BashModeEditor(
       { requestRender() {}, terminal: { columns: 80, rows: 24 } },
@@ -896,17 +910,19 @@ test("bash editor runs copied Pi app action handlers for alt-enter", async () =>
     } finally {
       setKittyProtocolActive(false);
     }
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor command arrows jump to editor boundaries", async () => {
-  const links = ensureEditorModuleLinks();
-
-  try {
     const { BashModeEditor } = await import("../bash-mode/editor.ts");
-    const { KeybindingsManager } = await import("/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/keybindings.js");
+    const { KeybindingsManager } = await import(pathToFileURL(join(
+      process.cwd(),
+      "node_modules",
+      "@mariozechner",
+      "pi-coding-agent",
+      "dist",
+      "core",
+      "keybindings.js",
+    )).href);
     const keybindings = KeybindingsManager.create();
     let renderRequests = 0;
     const editor = new BashModeEditor(
@@ -1005,9 +1021,6 @@ test("bash editor command arrows jump to editor boundaries", async () => {
     assert.deepEqual(configuredCommandEditor.getCursor(), { line: 2, col: 7 });
 
     assert.equal(renderRequests, 6);
-  } finally {
-    links.cleanup();
-  }
 });
 
 test("bash editor enter does not accept ghost text while a shell command is running", async () => {
