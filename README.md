@@ -18,19 +18,21 @@ Customizes the default [pi](https://github.com/badlogic/pi-mono) editor with a p
 
 **Rounded box design** — Status renders directly in the editor's top border, not as a separate footer.
 
+**Fixed editor cluster** — In interactive TUI sessions, chat/feed content scrolls above the fixed Pi working/status line, powerline rows, editor, ghost suggestions, bash transcript, and last-prompt/status rows. Scroll chat with the mouse wheel, PageUp/PageDown, Command+PageUp/PageDown, Ctrl+Shift+Up/Down, or message-jump shortcuts; the editor stays put. Drag text to copy it, drag selection to the viewport edge to scroll, double-click a line to select it, and right-click to open the terminal menu. Use `/powerline fixed-editor off` for Pi’s regular scrolling layout, or `/powerline mouse-scroll off` for native terminal selection.
+
 **Live thinking level indicator** — Shows current thinking level (`think:off`, `think:med`, etc.) with per-level colors. High and xhigh levels use a rainbow effect inspired by Claude Code's ultrathink.
 
 **Smart defaults** — Nerd Font auto-detection for iTerm, WezTerm, Kitty, Ghostty, and Alacritty with ASCII fallbacks. Colors matched to oh-my-pi's dark theme.
 
 **Git integration** — Async status fetching with 1s cache TTL. Automatically invalidates on file writes/edits. Shows branch, staged (+), unstaged (*), and untracked (?) counts.
 
-**Context awareness** — Color-coded warnings at 70% (yellow) and 90% (red) context usage. Auto-compact indicator when enabled. If `pi-custom-compaction` is installed and enabled, the powerline automatically hides native context segments so the footer does not show stale post-summary usage.
+**Context awareness** — Color-coded warnings at 70% (yellow) and 90% (red) context usage. During streaming, the context segment refreshes from live assistant usage instead of waiting for the next turn. Auto-compact indicator when enabled. If `pi-custom-compaction` is installed and enabled, the powerline automatically hides native context segments so the footer does not show stale post-summary usage.
 
 **Token intelligence** — Smart formatting (1.2k, 45M), subscription detection (shows "(sub)" vs dollar cost).
 
 **Sticky bash mode** — Toggle bash mode with `ctrl+shift+b` or `/bash-mode`. It keeps a managed shell session alive for the current pi session, shows a dedicated `shell_mode` segment, streams command output into an embedded transcript below the editor, and lets `cd` or exported state persist across commands.
 
-**Shell ghost suggestions** — Bash mode is now ghost-first. Successful per-project shell history is the primary source, contextual shell-native/path/git continuations can still extend an existing command, and generic dropdown autocomplete is gone. At command position, short stems first resolve from the newest successful local command, can use guarded global shell history for high-confidence heads like `git`, and finally fall back to a tiny curated default set when history is absent. Right now that curated set is `g` → `git status` and `c` → `cd ..`. If the bash prompt is empty, bash mode shows the newest successful project-history ghost suggestion when one exists, otherwise it stays empty. The same inline predictions now also kick in for one-off `!command` and `!!command` prompts. Right Arrow or Tab accepts ghost text into the editor, and Enter runs the current shell command.
+**Shell ghost suggestions** — Bash mode is now ghost-first. Successful per-project shell history is the primary source, while deterministic path and git continuations can still extend an existing command. Shell-native completion probes are disabled so `!command` predictions never spawn interactive shell completion subprocesses. At command position, short stems first resolve from the newest successful local command, can use guarded global shell history for high-confidence heads like `git`, and finally fall back to a tiny curated default set when history is absent. Right now that curated set is `g` → `git status` and `c` → `cd ..`. If the bash prompt is empty, bash mode shows the newest successful project-history ghost suggestion when one exists, otherwise it stays empty. The same inline predictions now also kick in for one-off `!command` and `!!command` prompts. Right Arrow or Tab accepts ghost text into the editor, and Enter runs the current shell command.
 
 ## Installation
 
@@ -42,7 +44,26 @@ Restart pi to activate.
 
 ## Usage
 
-Activates automatically. Toggle with `/powerline`, switch presets with `/powerline <name>`.
+Activates automatically. Toggle with `/powerline`, switch presets with `/powerline <name>`, fixed-editor mode with `/powerline fixed-editor on|off|toggle`, and wheel mode with `/powerline mouse-scroll on|off|toggle`.
+
+Fixed editor is on by default.
+
+- `/powerline fixed-editor off` — return to Pi’s regular scrolling layout
+- `/powerline fixed-editor on` — re-enable the fixed editor
+- `/powerline fixed-editor toggle` — switch between the two
+
+You can also set it in `~/.pi/agent/settings.json` or project-local `.pi/settings.json`:
+
+```json
+{
+  "powerline": {
+    "preset": "default",
+    "fixedEditor": false
+  }
+}
+```
+
+Use `"fixedEditor": true` to enable it again. Add `"mouseScroll": false` if you want native terminal selection instead of fixed-editor mouse handling.
 
 | Preset | Description |
 |--------|-------------|
@@ -120,7 +141,7 @@ While bash mode is active:
 - `escape` exits bash mode and returns to normal prompt mode
 - `ctrl+c` interrupts the active shell job before falling back to normal pi behavior
 
-The managed shell is persistent for the current pi session. Command output appears in a transcript below the editor, and shell cwd changes are reflected in the footer path and `shell_mode` segment. If the bash prompt is empty, bash mode shows the newest successful project-history ghost suggestion immediately when one exists, including right after mode entry or after the prompt is cleared again. One-off `!command` and `!!command` prompts reuse the same shell prediction pipeline, including ghost text. Mode entry stays quiet: there is no automatic or manual dropdown completion surface anymore.
+The managed shell is persistent for the current pi session. Command output appears in a transcript below the editor, and shell cwd changes are reflected in the footer path and `shell_mode` segment. If the bash prompt is empty, bash mode shows the newest successful project-history ghost suggestion immediately when one exists, including right after mode entry or after the prompt is cleared again. One-off `!command` and `!!command` prompts reuse the same shell prediction pipeline, including ghost text. Mode entry stays quiet: there is no automatic or manual dropdown completion surface, and ghost suggestions do not run shell-native completion probes.
 
 ### Bash mode configuration
 
@@ -165,12 +186,21 @@ Prompt history now has two sources:
 
 Selecting an entry inserts it into the editor. If the editor already has text, you can choose `Replace`, `Append`, or `Cancel`.
 
-### Editor clipboard shortcuts
+### Editor clipboard and chat shortcuts
 
 - `ctrl+alt+c` — copy full editor content
 - `ctrl+alt+x` — cut full editor content (copy, then clear)
+- `cmd+up` — scroll the fixed-editor chat viewport up
+- `cmd+down` — scroll the fixed-editor chat viewport down
+- `cmd+shift+up` — move the editor cursor to the start of the first line
+- `cmd+shift+down` — move the editor cursor to the end of the last line
+- `ctrl+shift+u` — jump the fixed-editor chat viewport to the previous user message
+- `ctrl+shift+i` — jump the fixed-editor chat viewport to the next user message
+- `ctrl+alt+,` — jump the fixed-editor chat viewport to the previous LLM message
+- `ctrl+alt+.` — jump the fixed-editor chat viewport to the next LLM message
+- `ctrl+shift+g` — jump the fixed-editor chat viewport to the bottom
 
-Copy/cut actions do not modify stash state or stash history.
+Copy/cut actions do not modify stash state or stash history. Chat jumps require fixed-editor mode because they use its app-owned scroll viewport. Submitting editor text also returns that viewport to the bottom so new output stays in view.
 
 ### Shortcut configuration
 
@@ -181,12 +211,21 @@ You can override shortcut keys in `~/.pi/agent/settings.json`:
   "powerlineShortcuts": {
     "stashHistory": "ctrl+alt+h",
     "copyEditor": "ctrl+alt+c",
-    "cutEditor": "ctrl+alt+x"
+    "cutEditor": "ctrl+alt+x",
+    "jumpPreviousUserMessage": "ctrl+shift+u",
+    "jumpNextUserMessage": "ctrl+shift+i",
+    "jumpPreviousLlmMessage": "ctrl+alt+,",
+    "jumpNextLlmMessage": "ctrl+alt+.",
+    "jumpChatBottom": "ctrl+shift+g",
+    "scrollChatUp": "cmd+up",
+    "scrollChatDown": "cmd+down",
+    "editorStart": "cmd+shift+up",
+    "editorEnd": "cmd+shift+down"
   }
 }
 ```
 
-After changing bindings, run `/reload`. Invalid bindings, reserved key conflicts (like `Alt+S`), or duplicate conflicts automatically fall back to safe defaults.
+After changing bindings, run `/reload`. Invalid bindings, reserved key conflicts (like `Alt+S`), or duplicate conflicts automatically fall back to safe defaults. `cmd` and `command` are accepted aliases for Pi's `super` modifier for the documented Command navigation keys; unsupported Command-letter bindings such as `cmd+c` are ignored instead of matching plain text input. Some terminals, including Ghostty, bind Command+Arrow themselves; remap those terminal keys to send `\x1b[1;9A` / `\x1b[1;9B` for chat scrolling and `\x1b[1;10A` / `\x1b[1;10B` for editor-boundary navigation if you want Pi to receive them.
 
 ## Working Vibes
 

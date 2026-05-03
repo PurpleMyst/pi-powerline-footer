@@ -1,9 +1,15 @@
 import { CustomEditor } from "@mariozechner/pi-coding-agent";
-import { visibleWidth, truncateToWidth } from "@mariozechner/pi-tui";
+import { isKeyRelease, matchesKey, visibleWidth, truncateToWidth } from "@mariozechner/pi-tui";
 import type { KeybindingsManager } from "@mariozechner/pi-coding-agent/dist/core/keybindings.js";
 import type { AutocompleteProvider } from "@mariozechner/pi-tui";
+import { matchesConfiguredShortcut } from "../shortcuts.ts";
 import { getOneOffBashCommandContext } from "./completion.ts";
 import type { GhostSuggestion } from "./types.ts";
+
+interface EditorBoundaryShortcuts {
+  start: string;
+  end: string;
+}
 
 interface BashModeEditorOptions {
   keybindings: KeybindingsManager;
@@ -11,14 +17,25 @@ interface BashModeEditorOptions {
   isShellRunning: () => boolean;
   onExitBashMode: () => void;
   onSubmitCommand: (command: string) => void;
+  onEditorSubmit?: () => void;
+  editorBoundaryShortcuts?: EditorBoundaryShortcuts;
   onInterrupt: () => void;
   onNotify: (message: string, level?: "info" | "warning" | "error") => void;
   getHistoryEntries: (prefix: string) => string[];
   resolveGhostSuggestion: (text: string, signal: AbortSignal) => Promise<GhostSuggestion | null>;
 }
 
+const DEFAULT_EDITOR_BOUNDARY_SHORTCUTS: EditorBoundaryShortcuts = {
+  start: "super+shift+up",
+  end: "super+shift+down",
+};
+
 function isPrintableInput(data: string): boolean {
   return data.length === 1 && data.charCodeAt(0) >= 32;
+}
+
+function matchesEditorBoundaryShortcut(data: string, shortcut: string): boolean {
+  return matchesConfiguredShortcut(data, shortcut);
 }
 
 export class BashModeEditor extends CustomEditor {
@@ -104,6 +121,17 @@ export class BashModeEditor extends CustomEditor {
         return;
       }
 
+      const editorBoundaryShortcuts = this.optionsRef.editorBoundaryShortcuts ?? DEFAULT_EDITOR_BOUNDARY_SHORTCUTS;
+      if (!isKeyRelease(data) && matchesEditorBoundaryShortcut(data, editorBoundaryShortcuts.start)) {
+        this.moveCursorToEditorBoundary("start");
+        return;
+      }
+
+      if (!isKeyRelease(data) && matchesEditorBoundaryShortcut(data, editorBoundaryShortcuts.end)) {
+        this.moveCursorToEditorBoundary("end");
+        return;
+      }
+
       if ((bashMode || oneOffBashCommand) && this.keybindingsRef.matches(data, "tui.input.tab")) {
         this.acceptGhostSuggestion();
         return;
@@ -129,6 +157,7 @@ export class BashModeEditor extends CustomEditor {
         this.shellHistoryIndex = -1;
         this.shellHistoryItems = [];
         this.shellHistoryDraft = "";
+        this.optionsRef.onEditorSubmit?.();
         this.optionsRef.onSubmitCommand(command);
         this.setText("");
         this.refreshGhostSuggestion();
@@ -200,6 +229,28 @@ export class BashModeEditor extends CustomEditor {
 
   private isOneOffBashCommandContext(): boolean {
     return getOneOffBashCommandContext(this.getExpandedText()) !== null;
+  }
+
+  private moveCursorToEditorBoundary(position: "start" | "end"): void {
+    const state = Reflect.get(this, "state");
+    const lines = state && typeof state === "object" ? Reflect.get(state, "lines") : null;
+    if (!Array.isArray(lines)) {
+      throw new Error("Editor cursor state is unavailable");
+    }
+
+    if (position === "start") {
+      Reflect.set(state, "cursorLine", 0);
+      Reflect.set(state, "cursorCol", 0);
+    } else {
+      const lastLine = Math.max(0, lines.length - 1);
+      Reflect.set(state, "cursorLine", lastLine);
+      Reflect.set(state, "cursorCol", typeof lines[lastLine] === "string" ? lines[lastLine].length : 0);
+    }
+
+    Reflect.set(this, "lastAction", null);
+    Reflect.set(this, "preferredVisualCol", null);
+    Reflect.set(this, "snappedFromCursorCol", null);
+    this.tui.requestRender();
   }
 
   private acceptGhostSuggestion(): boolean {
